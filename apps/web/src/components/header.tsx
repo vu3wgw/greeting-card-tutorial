@@ -1,26 +1,17 @@
 "use client";
-import Link from "next/link";
 
+import { Sparkles } from "lucide-react";
 import { ModeToggle } from "./mode-toggle";
 
 export default function Header() {
-  const links = [{ to: "/", label: "Home" }] as const;
-
   return (
     <div>
-      <div className="flex flex-row items-center justify-between px-2 py-1">
-        <nav className="flex gap-4 text-lg">
-          {links.map(({ to, label }) => {
-            return (
-              <Link key={to} href={to}>
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+      <div className="flex flex-row items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2">
-          <ModeToggle />
+          <Sparkles className="size-5 text-primary" />
+          <span className="text-lg font-semibold tracking-tight">AI Greeting Card Maker</span>
         </div>
+        <ModeToggle />
       </div>
       <hr />
     </div>
