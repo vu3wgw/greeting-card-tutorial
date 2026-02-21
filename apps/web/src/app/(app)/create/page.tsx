@@ -16,12 +16,10 @@ import {
   Save,
   Check,
   Loader2,
-  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/glass-card";
 import { Button } from "@/components/ui/button";
-import { CardHistorySidebar } from "@/components/card-history-sidebar";
 import { CARD_STYLES, DEFAULT_STYLE, type CardStyle } from "@/lib/card-styles";
 import { getCroppedImageBlob, fileToBase64, compositeCardImage } from "@/lib/crop-utils";
 import { saveCard } from "@/lib/save-card";
@@ -39,7 +37,6 @@ interface State {
   style: CardStyle;
   generatedUrl: string | null;
   compositedBlob: Blob | null;
-  /** Blob URLs to revoke when no longer needed */
   _blobUrls: string[];
 }
 
@@ -117,61 +114,15 @@ const STAGES = [
 
 export default function CreatePage() {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
-  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
-  const refreshSidebar = () => setSidebarRefreshKey((k) => k + 1);
 
   return (
-    <div className="container mx-auto flex h-full gap-6 overflow-hidden px-4 py-6">
-      {/* Main area */}
-      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto">
-        {/* Image area */}
-        <ImageArea state={state} dispatch={dispatch} refreshSidebar={refreshSidebar} />
-
-        {/* Controls — appear progressively */}
+    <div className="container mx-auto max-w-2xl px-4 py-6">
+      <div className="flex flex-col gap-5">
+        <ImageArea state={state} dispatch={dispatch} />
         {state.phase === "cropped" && (
           <ControlsPanel state={state} dispatch={dispatch} />
         )}
       </div>
-
-      {/* History sidebar — desktop: inline, mobile: slide-over */}
-      <div className="hidden w-72 shrink-0 overflow-y-auto lg:block">
-        <CardHistorySidebar refreshKey={sidebarRefreshKey} />
-      </div>
-
-      {/* Mobile history toggle */}
-      <button
-        onClick={() => setMobileHistoryOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 lg:hidden"
-        aria-label="View card history"
-      >
-        <History className="size-5" />
-      </button>
-
-      {/* Mobile history slide-over */}
-      {mobileHistoryOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
-            onClick={() => setMobileHistoryOpen(false)}
-          />
-          <div className="fixed inset-y-0 right-0 z-50 flex w-80 max-w-[85vw] flex-col bg-background shadow-2xl lg:hidden">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <span className="text-sm font-semibold">Card History</span>
-              <button
-                onClick={() => setMobileHistoryOpen(false)}
-                className="rounded-full p-1 hover:bg-muted"
-                aria-label="Close history"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <CardHistorySidebar refreshKey={sidebarRefreshKey} />
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -181,11 +132,9 @@ export default function CreatePage() {
 function ImageArea({
   state,
   dispatch,
-  refreshSidebar,
 }: {
   state: State;
   dispatch: React.Dispatch<Action>;
-  refreshSidebar: () => void;
 }) {
   switch (state.phase) {
     case "empty":
@@ -210,13 +159,7 @@ function ImageArea({
         />
       );
     case "done":
-      return (
-        <DonePreview
-          state={state}
-          dispatch={dispatch}
-          refreshSidebar={refreshSidebar}
-        />
-      );
+      return <DonePreview state={state} dispatch={dispatch} />;
   }
 }
 
@@ -397,7 +340,6 @@ function ControlsPanel({
 }) {
   return (
     <GlassCard className="space-y-5 p-5">
-      {/* Message */}
       <div>
         <label className="mb-1.5 block text-sm font-medium">Message</label>
         <textarea
@@ -411,7 +353,6 @@ function ControlsPanel({
         <p className="mt-1 text-right text-xs text-muted-foreground">{state.message.length}/200</p>
       </div>
 
-      {/* Style picker */}
       <div>
         <label className="mb-2 block text-sm font-medium">Style</label>
         <div className="flex flex-wrap gap-3">
@@ -435,7 +376,6 @@ function ControlsPanel({
         </div>
       </div>
 
-      {/* Generate button */}
       <Button
         size="lg"
         className="w-full"
@@ -542,11 +482,9 @@ function GeneratingOverlay({
 function DonePreview({
   state,
   dispatch,
-  refreshSidebar,
 }: {
   state: State;
   dispatch: React.Dispatch<Action>;
-  refreshSidebar: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -582,7 +520,6 @@ function DonePreview({
       await saveCard(state.compositedBlob, state.message);
       setSaved(true);
       toast.success("Card saved to history!");
-      refreshSidebar();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save card");
     } finally {

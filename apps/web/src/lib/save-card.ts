@@ -1,12 +1,18 @@
-import { supabase, getDeviceId } from "./supabase";
+import { supabase } from "./supabase";
 
 export interface CardRecord {
   id: string;
-  device_id: string;
+  user_id: string;
   image_path: string;
   image_url: string | null;
   message: string;
   created_at: string;
+}
+
+async function getUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  return user.id;
 }
 
 /**
@@ -14,8 +20,8 @@ export interface CardRecord {
  * and insert a metadata row into the cards table.
  */
 export async function saveCard(blob: Blob, message: string): Promise<CardRecord> {
-  const deviceId = getDeviceId();
-  const filename = `${deviceId}/${Date.now()}.png`;
+  const userId = await getUserId();
+  const filename = `${userId}/${Date.now()}.png`;
 
   // Upload to storage
   const { error: uploadError } = await supabase.storage
@@ -33,7 +39,7 @@ export async function saveCard(blob: Blob, message: string): Promise<CardRecord>
   const { data, error: insertError } = await supabase
     .from("cards")
     .insert({
-      device_id: deviceId,
+      user_id: userId,
       image_path: filename,
       image_url: urlData.publicUrl,
       message,
@@ -49,15 +55,15 @@ export async function saveCard(blob: Blob, message: string): Promise<CardRecord>
 }
 
 /**
- * Fetch card history for the current device, newest first.
+ * Fetch card history for the current user, newest first.
  */
 export async function fetchCardHistory(): Promise<CardRecord[]> {
-  const deviceId = getDeviceId();
+  const userId = await getUserId();
 
   const { data, error } = await supabase
     .from("cards")
     .select("*")
-    .eq("device_id", deviceId)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
